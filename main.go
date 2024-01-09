@@ -70,13 +70,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//CRUD: Create, Read, update, Delete
-	//	POST / v 1/ items (create a new item)
-	//	C,€r ,/vl/items (12 st Items) / v 1/2 tems *page-I
-	//	C,€r /vl/items/:åd (get item detan by ld)
-	//	(PUT // PATCH) / v 1/2 tems/:id (update an Item by ld)
-	//	DELETE (delete item by ld)
-
 	fmt.Println(db)
 
 	router := gin.Default()
@@ -95,13 +88,6 @@ func main() {
 	//router.GET("/books", getBooks)
 	router.Run("localhost:8080")
 }
-
-//func createBook() func(*gin.Context) {
-//	return func(c *gin.Context) {
-//		var data bookDTO
-//		c.IndentedJSON(http.StatusOK, data)
-//	}
-//}
 
 func createBook(db *gorm.DB) func(*gin.Context) {
 	return func(c *gin.Context) {
@@ -173,11 +159,13 @@ func updateBook(db *gorm.DB) func(c *gin.Context) {
 			return
 		}
 
-		//data.ID = id
-		if err := db.Where("id = ?", id).Updates(&data).Error; err != nil {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
+		// Wrap the update operation in a transaction
+		err = tx.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Where("id = ?", id).Updates(&data).Error; err != nil {
+				return err
+			}
+			return nil
+		})
 
 		// Commit the transaction on successful update.
 		if err := tx.Commit().Error; err != nil {
