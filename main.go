@@ -7,38 +7,59 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-type book struct {
-	ID       int    `json:"id"`
-	Title    string `json:"title"`
-	Author   string `json:"author"`
-	Quantity int    `json:"quantity"`
-	Status   bool   `json:"status"`
-}
-
-type bookDTO struct {
+type Book struct {
+	ID       int    `json:"id" gorm:"column:id"`
 	Title    string `json:"title" gorm:"column:title;"`
-	Author   string `json:"author gorm:"column:author;"`
-	Quantity int    `json:"quantity gorm:"column:quantity;"`
-	Status   bool   `json:"status gorm:"column:status;"`
+	AuthorId int    `json:"author_id" gorm:"column:author_id;"`
+	Quantity int    `json:"quantity" gorm:"column:quantity;"`
+	Status   bool   `json:"status" gorm:"column:status;"`
 }
 
-var books = []book{
-	{ID: 1, Title: "In Search of Lost Time", Author: "Marcel Proust", Quantity: 2, Status: false},
-	{ID: 2, Title: "The Great Gatsby", Author: "F. Scott Fitzgerald", Quantity: 5, Status: true},
-	{ID: 3, Title: "War and Peace", Author: "Leo Tolstoy", Quantity: 6, Status: true},
-}
-
-func getBooks(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, books)
-}
-
-func (bookDTO) TableName() string {
+func (Book) TableName() string {
 	return "books"
 }
+
+type Author struct {
+	AuthorID int    `json:"author_id" gorm:"column:author_id"`
+	Name     string `json:"name" gorm:"column:name"`
+}
+
+type AuthorDTO struct {
+	AuthorID int    `json:"-" gorm:"column:author_id"`
+	Name     string `json:"name" gorm:"column:name"`
+}
+
+type BookCreation struct {
+	ID       int    `json:"-" gorm:"column:id"`
+	Title    string `json:"title" gorm:"column:title;"`
+	AuthorId int    `json:"author_id" gorm:"column:author_id;"`
+	Quantity int    `json:"quantity" gorm:"column:quantity;"`
+	Status   bool   `json:"status" gorm:"column:status;"`
+}
+
+func (BookCreation) TableName() string {
+	return Book{}.TableName()
+}
+
+type BookUpdate struct {
+	Title    string `json:"title" gorm:"column:title;"`
+	AuthorId int    `json:"author_id" gorm:"column:author_id;"`
+	Quantity int    `json:"quantity" gorm:"column:quantity;"`
+	Status   bool   `json:"status" gorm:"column:status;"`
+}
+
+func (BookUpdate) TableName() string {
+	return Book{}.TableName()
+}
+
+//func getBooks(c *gin.Context) {
+//	c.IndentedJSON(http.StatusOK, books)
+//}
 
 func main() {
 
@@ -63,10 +84,10 @@ func main() {
 	{
 		items := v1.Group("/books")
 		{
-			items.POST("")
-			items.GET("/:id")
-			items.GET("", getBooks)
-			items.PATCH("/:id")
+			items.POST("", createBook(db))
+			items.GET("/:id", getBook(db))
+			items.GET("", getBooks(db))
+			items.PATCH("/:id", updateBook(db))
 			items.DELETE("/:id")
 		}
 	}
@@ -82,12 +103,105 @@ func main() {
 //	}
 //}
 
-func createBook(c *gin.Context) {
-	var data bookDTO
-	if err := c.ShouldBind(&data); err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+func createBook(db *gorm.DB) func(*gin.Context) {
+	return func(c *gin.Context) {
+		var data BookCreation
+		if err := c.ShouldBind(&data); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
-	c.IndentedJSON(http.StatusOK, gin.H{"message": "add book to database"})
+		if err := db.Create(&data).Error; err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, gin.H{"bookId": data.ID})
+	}
+}
+
+func getBook(db *gorm.DB) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var data Book
+
+		//v1/books/:id
+		id, err := strconv.Atoi(c.Param("id"))
+
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		//data.ID = id
+		if err := db.Where("id = ?", id).First(&data).Error; err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, gin.H{"data": data})
+
+	}
+}
+
+func updateBook(db *gorm.DB) func(c *gin.Context) {
+	return func(c *gin.Context) {
+
+		// Start a GORM transaction.
+		tx := db.Begin()
+
+		// Ensure the transaction is rolled back if there is an error or it is not committed.
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
+
+		var data BookUpdate
+
+		//v1/books/:id
+		id, err := strconv.Atoi(c.Param("id"))
+
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			tx.Rollback()
+			return
+		}
+
+		if err := c.ShouldBind(&data); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			tx.Rollback()
+			return
+		}
+
+		//data.ID = id
+		if err := db.Where("id = ?", id).Updates(&data).Error; err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Commit the transaction on successful update.
+		if err := tx.Commit().Error; err != nil {
+			// Handle the case where the transaction commit fails.
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to commit transaction"})
+			tx.Rollback()
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, gin.H{"message": "update successful"})
+
+	}
+}
+
+func getBooks(db *gorm.DB) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var data []Book
+
+		if err := db.Find(&data).Error; err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, gin.H{"data": data})
+
+	}
 }
