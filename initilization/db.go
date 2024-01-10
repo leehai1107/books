@@ -1,7 +1,9 @@
 package initilization
 
 import (
+	"context"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
@@ -9,7 +11,9 @@ import (
 	"strconv"
 )
 
-func ConnectToDatabase() *gorm.DB {
+var RedisClient *redis.Client
+
+func ConnectToDatabase() (*gorm.DB, *redis.Client, error) {
 	var (
 		host     = os.Getenv("POSTGRES_HOST")
 		port, _  = strconv.Atoi(os.Getenv("POSTGRES_PORT"))
@@ -28,5 +32,18 @@ func ConnectToDatabase() *gorm.DB {
 	}
 
 	fmt.Println("Connect successful to Database!")
-	return db
+
+	// Redis initialization
+	RedisClient = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379", // Update with your Redis server address
+		Password: "",               // Set password if applicable
+		DB:       0,                // Default DB
+	})
+
+	_, err = RedisClient.Ping(context.Background()).Result()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return db, RedisClient, nil
 }

@@ -13,8 +13,7 @@ type BookHandler struct {
 }
 
 func (s *BookHandler) GetBookById(c *gin.Context) {
-	BookIdStr := c.Query("id")
-	BookId, err := strconv.Atoi(c.Param(BookIdStr))
+	BookId, err := strconv.Atoi(c.Param("id"))
 
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid book ID"})
@@ -64,7 +63,7 @@ func (s *BookHandler) UpdateBook(c *gin.Context) {
 		return
 	}
 
-	result, err := s.IBookService.UpdateBook(data)
+	result, err := s.IBookService.UpdateBook(&data)
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -74,8 +73,7 @@ func (s *BookHandler) UpdateBook(c *gin.Context) {
 }
 
 func (s *BookHandler) DeleteBook(c *gin.Context) {
-	BookIdStr := c.Query("id")
-	BookId, err := strconv.Atoi(c.Param(BookIdStr))
+	BookId, err := strconv.Atoi(c.Param("id"))
 
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid book ID"})
