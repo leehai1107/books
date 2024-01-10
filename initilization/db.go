@@ -1,4 +1,4 @@
-package initializers
+package initilization
 
 import (
 	"fmt"

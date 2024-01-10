@@ -1,7 +1,7 @@
 package main
 
 import (
-	"example/Demo/initializers"
+	"example/Demo/initilization"
 	"example/Demo/routes"
 	"github.com/joho/godotenv"
 	"log"
@@ -15,7 +15,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	db := initializers.ConnectToDatabase()
+	db := initilization.ConnectToDatabase()
 
 	// Create a new Gin router
 	router := routes.CreateRoutes(db)

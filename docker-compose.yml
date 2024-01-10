@@ -1,29 +1,37 @@
 version: '3.7'
 
 services:
-  go-app:
-    container_name: go-app
-    image: francescoxx/go-app:1.0.1
-    build: .
+  database:
+    container_name: postgres-server
+    restart: always
+    image: postgres:latest
+    volumes:
+      - ./initilization/DBTable.sql:/docker-entrypoint-initdb.d/DBTable.sql
+    ports:
+      - "5432:5432"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=mysecretpassword
       - POSTGRES_DB=books-management
+    networks:
+      - book-management-network
+
+  server:
+    container_name: golang-server
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     depends_on:
-      - go_db
-  go_db:
-    container_name: go_db
-    image: postgres:16
-    environment:
-      POSTGRES_PASSWORD: mysecretpassword
-      POSTGRES_USER: postgres
-      POSTGRES_DB: books-management
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+      - database
+    networks:
+      - book-management-network
 
-volumes:  
-  pgdata: {}
+volumes:
+  dbinit:
+
+networks:
+  book-management-network:
+    driver: bridge

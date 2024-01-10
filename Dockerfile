@@ -1,20 +1,35 @@
-# use official Golang image
-FROM golang:1.21.5
+# Use the official image as a parent image.
+FROM golang:alpine as builder
 
-# set working directory
+ENV GO111MODULE=on
+
+
+# Set the working directory.
 WORKDIR /app
 
-# Copy the source code
-COPY . . 
+# Copy the file from your host to your current location.
+COPY .env .
+COPY go.mod .
 
-# Download and install the dependencies
-RUN go get -d -v ./...
+RUN go mod download
+
+COPY . .
 
 # Build the Go app
-RUN go build -o api .
+RUN go build -o main .
 
-#EXPOSE the port
-EXPOSE 8000
+# Start a new stage from scratch
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
 
-# Run the executable
-CMD ["./api"]
+WORKDIR /root
+
+# Copy the Pre-built binary file from the previous stage. Observe we also copied the .env file
+COPY --from=builder /app/main .
+COPY --from=builder /app/.env ./.env
+
+# Expose port 8080 to the outside world
+EXPOSE 8080
+
+#Command to run the executable
+CMD ["./main"]
