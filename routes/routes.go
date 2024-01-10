@@ -22,8 +22,6 @@ func CreateRoutes(db *gorm.DB) *gin.Engine {
 
 	bookGroup := r.Group("/books")
 	{
-		// Add your book routes here using Gin
-		// For example:
 		bookGroup.GET("/:id", bookHandler.GetBookById)
 		bookGroup.GET("", bookHandler.GetBooks)
 		bookGroup.POST("/", bookHandler.CreateBook)

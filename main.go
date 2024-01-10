@@ -15,7 +15,13 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	db := initilization.ConnectToDatabase()
+	db, redisClient, err := initilization.ConnectToDatabase()
+	if err != nil {
+		log.Fatal("Error connecting to the database and/or Redis:", err)
+	}
+
+	// Close Redis client when the main function exits
+	defer redisClient.Close()
 
 	// Create a new Gin router
 	router := routes.CreateRoutes(db)
