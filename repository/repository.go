@@ -46,10 +46,16 @@ func (r BookRepository) CreateBook(creation *models.BookCreation) (int, error) {
 }
 
 func (r BookRepository) UpdateBook(update *models.BookUpdate, bookId int) (int, error) {
-	if err := r.Db.Model(&models.BookUpdate{}).Where("id = ?", bookId).Updates(&update).Error; err != nil {
+
+	err := r.Db.Transaction(func(tx *gorm.DB) error {
+		err := r.Db.Model(&models.BookUpdate{}).Where("id = ?", bookId).Updates(&update).Error
+		return err
+	})
+	if err != nil {
 		return -1, err
 	}
 	return bookId, nil
+
 }
 
 func (r BookRepository) DeleteBook(id int) (string, error) {
