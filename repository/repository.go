@@ -9,7 +9,7 @@ type IBookRepo interface {
 	GetBookById(id int) (models.Book, error)
 	GetBooks() ([]models.Book, error)
 	CreateBook(creation *models.BookCreation) (int, error)
-	UpdateBook(update *models.BookUpdate) (int, error)
+	UpdateBook(update *models.BookUpdate, bookId int) (int, error)
 	DeleteBook(id int) (string, error)
 }
 
@@ -45,11 +45,11 @@ func (r BookRepository) CreateBook(creation *models.BookCreation) (int, error) {
 	return creation.ID, nil
 }
 
-func (r BookRepository) UpdateBook(update *models.BookUpdate) (int, error) {
-	if err := r.Db.Model(&models.Book{}).Where("id = ?", update.ID).Updates(&update).Error; err != nil {
+func (r BookRepository) UpdateBook(update *models.BookUpdate, bookId int) (int, error) {
+	if err := r.Db.Model(&models.BookUpdate{}).Where("id = ?", bookId).Updates(&update).Error; err != nil {
 		return -1, err
 	}
-	return update.ID, nil
+	return bookId, nil
 }
 
 func (r BookRepository) DeleteBook(id int) (string, error) {

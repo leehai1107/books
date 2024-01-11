@@ -30,7 +30,7 @@ func (s *BookHandler) GetBookById(c *gin.Context) {
 }
 
 func (s *BookHandler) GetBooks(c *gin.Context) {
-	data, err := s.IBookService.GetBooks()
+	data, err := s.IBookService.GetBooks(c)
 
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -47,7 +47,7 @@ func (s *BookHandler) CreateBook(c *gin.Context) {
 		return
 	}
 
-	result, err := s.IBookService.CreateBook(&data)
+	result, err := s.IBookService.CreateBook(&data, c)
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -57,13 +57,15 @@ func (s *BookHandler) CreateBook(c *gin.Context) {
 }
 
 func (s *BookHandler) UpdateBook(c *gin.Context) {
+	BookId, err := strconv.Atoi(c.Param("id"))
+
 	var data models.BookUpdate
 	if err := c.ShouldBind(&data); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	result, err := s.IBookService.UpdateBook(&data)
+	result, err := s.IBookService.UpdateBook(&data, BookId, c)
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -80,7 +82,7 @@ func (s *BookHandler) DeleteBook(c *gin.Context) {
 		return
 	}
 
-	book, err := s.IBookService.DeleteBook(BookId)
+	book, err := s.IBookService.DeleteBook(BookId, c)
 	if err != nil {
 		c.IndentedJSON(http.StatusNotFound, gin.H{"error": "Book not found"})
 		return
