@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.books (
                                             title VARCHAR NOT NULL,
                                             author_id INT NOT NULL,
                                             quantity INT NOT NULL,
+                                            price float not null,
                                             status BOOL NOT NULL,
                                             CONSTRAINT books_fk FOREIGN KEY (author_id) REFERENCES authors(author_id)
     );

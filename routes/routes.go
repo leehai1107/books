@@ -27,6 +27,7 @@ func CreateRoutes(db *gorm.DB) *gin.Engine {
 		bookGroup.POST("/", bookHandler.CreateBook)
 		bookGroup.PUT("/:id", bookHandler.UpdateBook)
 		bookGroup.DELETE("/:id", bookHandler.DeleteBook)
+		bookGroup.PATCH("/price", bookHandler.UpdateBookPrice)
 	}
 
 	return r

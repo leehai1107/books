@@ -30,7 +30,14 @@ func (s *BookHandler) GetBookById(c *gin.Context) {
 }
 
 func (s *BookHandler) GetBooks(c *gin.Context) {
-	data, err := s.IBookService.GetBooks(c)
+	var paging models.Paging
+	if err := c.ShouldBind(&paging); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	paging.Process()
+
+	data, err := s.IBookService.GetBooks(paging, c)
 
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -72,6 +79,22 @@ func (s *BookHandler) UpdateBook(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, gin.H{"bookId": result})
+}
+
+func (s *BookHandler) UpdateBookPrice(c *gin.Context) {
+	var data models.BookUpdatePrice
+	if err := c.ShouldBind(&data); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	bookIds, err := s.IBookService.UpdateBookPrice(data.BookIds, data.Price, c)
+	if err != nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"error": "Can not update book price!"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, gin.H{"data": bookIds})
+
 }
 
 func (s *BookHandler) DeleteBook(c *gin.Context) {

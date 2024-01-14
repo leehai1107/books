@@ -7,13 +7,15 @@ import (
 	"example/Demo/repository"
 	"github.com/goccy/go-json"
 	"github.com/redis/go-redis/v9"
+	"log"
 )
 
 type IBookService interface {
 	GetBookById(id int) (models.Book, error)
-	GetBooks(ctx context.Context) ([]models.Book, error)
+	GetBooks(page models.Paging, ctx context.Context) ([]models.Book, error)
 	CreateBook(creation *models.BookCreation, ctx context.Context) (int, error)
 	UpdateBook(update *models.BookUpdate, bookId int, ctx context.Context) (int, error)
+	UpdateBookPrice(bookIds []int, price float32, ctx context.Context) ([]int, error)
 	DeleteBook(id int, ctx context.Context) (string, error)
 }
 
@@ -26,7 +28,7 @@ func (s BookService) GetBookById(id int) (models.Book, error) {
 	return data, err
 }
 
-func (s BookService) GetBooks(ctx context.Context) ([]models.Book, error) {
+func (s BookService) GetBooks(page models.Paging, ctx context.Context) ([]models.Book, error) {
 	// Check if data is cached
 	cachedData, err := initilization.RedisClient.Get(ctx, "books").Result()
 	if err == nil {
@@ -38,7 +40,7 @@ func (s BookService) GetBooks(ctx context.Context) ([]models.Book, error) {
 	}
 
 	// Fetch data from the database if not in the cache
-	data, err := s.IBookRepo.GetBooks()
+	data, err := s.IBookRepo.GetBooks(page)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +66,12 @@ func (s BookService) UpdateBook(update *models.BookUpdate, bookId int, ctx conte
 	return data, err
 }
 
+func (s BookService) UpdateBookPrice(bookIds []int, price float32, ctx context.Context) ([]int, error) {
+	data, err := s.IBookRepo.UpdateBookPrice(bookIds, price)
+	InvalidCacheKey("books", ctx, initilization.RedisClient)
+	return data, err
+}
+
 func (s BookService) DeleteBook(id int, ctx context.Context) (string, error) {
 	data, err := s.IBookRepo.DeleteBook(id)
 	InvalidCacheKey("books", ctx, initilization.RedisClient)
@@ -73,6 +81,6 @@ func (s BookService) DeleteBook(id int, ctx context.Context) (string, error) {
 func InvalidCacheKey(key string, ctx context.Context, rdb *redis.Client) {
 	err := rdb.Del(ctx, key).Err()
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 }
